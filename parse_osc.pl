@@ -25,6 +25,7 @@ my $database;
 my $dbhost = 'localhost';
 my $user;
 my $password;
+my $port = '5432';
 my $zipped;
 my $clear;
 
@@ -37,6 +38,7 @@ GetOptions(#'h|help' => \$help,
            'h|host=s' => \$dbhost,
            'u|user=s' => \$user,
            'p|password=s' => \$password,
+           'o|port=s' => \$port,           
            'c|clear' => \$clear,
            's|state=s' => \$state_file,
            'w|wget=s' => \$wget
@@ -47,8 +49,7 @@ if( $help ) {
 }
 
 usage("Please specify database and user names") unless $database && $user;
-my $db = DBIx::Simple->connect("DBI:mysql:database=$database;host=$dbhost;mysql_enable_utf8=1", $user, $password, {RaiseError => 1});
-$db->query("set names 'utf8'") or die "Failed to set utf8 in mysql";
+my $db = DBIx::Simple->connect("DBI:Pg:dbname=$database;host=$dbhost;port=$port", $user, $password, {RaiseError => 1, pg_enable_utf8 => 0});
 create_table() if $clear;
 my $ua = LWP::UserAgent->new();
 $ua->env_proxy;
@@ -139,7 +140,7 @@ sub process_osc {
         }
     }
     print STDERR scalar(keys %users)." users, writing..." if $verbose;
-    my $sql_ch = "insert into whosthat (user_id, user_name, date_first, date_last) values(?,?,?,?) on duplicate key update date_last = greatest(date_last, values(date_last)), date_first = least(date_first, values(date_first))";
+    my $sql_ch = "insert into whosthat (user_id, user_name, date_first, date_last) values(?,?,?,?) on conflict (user_name,user_id) do update set date_last = greatest(whosthat.date_last, EXCLUDED.date_last), date_first = least(whosthat.date_first, EXCLUDED.date_first)";
     $db->begin;
     eval {
         for my $c (values %users) {
@@ -170,15 +171,14 @@ sub create_table {
 
     my $sql = <<CREAT1;
 create table whosthat (
-	user_id int unsigned not null,
-        user_name varchar(200) not null,
-        date_first date not null,
-        date_last date not null,
-
-	primary key (user_id, user_name),
-	index idx_name (user_name),
-        index idx_last (date_last)
-)
+    user_id bigint not null,
+    user_name varchar(200) not null,
+    date_first date not null,
+    date_last date not null,
+    primary key (user_id, user_name)
+);
+create index idx_name on whosthat (user_name);
+create index idx_last on whosthat (date_last);
 CREAT1
     $db->query($sql) or die $db->error;
     print STDERR "Database tables were recreated.\n" if $verbose;
@@ -199,6 +199,7 @@ usage: $prog -i osc_file [-z] -d database -u user [-h host] [-p password] [-v]
  -z           : input file is gzip-compressed.
  -l url       : base replication URL, must have a state file.
  -h host      : DB host.
+ -o port      : DB Port. 
  -d database  : DB database name.
  -u user      : DB user name.
  -p password  : DB password.

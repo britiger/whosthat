@@ -41,5 +41,6 @@ To specify users, use one of those parameters:
 
 ## License
 
-All this is written by Ilya Zverev and licensed WTFPL: do whatever you want with it.
+The original is written by Ilya Zverev and licensed WTFPL: do whatever you want with it.
+PostgreSQL-Version by Christopher Lorenz
 
