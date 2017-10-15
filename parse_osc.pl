@@ -172,7 +172,7 @@ sub create_table {
     my $sql = <<CREAT1;
 create table whosthat (
     user_id bigint not null,
-    user_name varchar(200) not null,
+    user_name varchar(300) not null,
     date_first date not null,
     date_last date not null,
     primary key (user_id, user_name)
